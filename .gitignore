@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+web/node_modules/
+web/.angular/
+data/
+web/dist/

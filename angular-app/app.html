@@ -1,0 +1,59 @@
+<!-- app.html - chat UI. Each assistant answer shows a live "trace" of the diagram steps it went through. -->
+<main class="chat">
+  <header class="top">
+    <h1>Company Docs Assistant</h1>
+    <!-- Connection status dot (green = WebSocket open). -->
+    <span class="status" [class.online]="connected()">{{ connected() ? 'Connected' : 'Connecting…' }}</span>
+  </header>
+
+  <!-- Choose how the backend answers: fixed pipeline (your diagram) or AI agent with tools. -->
+  <div class="toolbar">
+    <label><input type="radio" name="mode" [checked]="mode() === 'pipeline'" (change)="mode.set('pipeline')" /> Pipeline (diagram flow)</label>
+    <label><input type="radio" name="mode" [checked]="mode() === 'agent'" (change)="mode.set('agent')" /> Agent (LLM picks tools)</label>
+    <button type="button" class="ghost" (click)="newChat()">New chat</button>
+  </div>
+
+  <section class="messages">
+    @for (message of messages(); track $index) { <!-- One bubble per message. -->
+      <article class="bubble" [class.user]="message.role === 'user'" [class.blocked]="message.blocked">
+        @if (message.steps.length) { <!-- Trace: which diagram boxes ran, with details. -->
+          <details class="trace">
+            <summary>Flow trace ({{ message.steps.length }} steps)</summary>
+            <ol>
+              @for (step of message.steps; track step.name) {
+                <li>
+                  <span class="dot" [class.done]="step.status === 'done'"></span>
+                  <strong>{{ step.name }}</strong> {{ step.detail }}
+                </li>
+              }
+            </ol>
+          </details>
+        }
+
+        <p class="text">{{ message.text || (message.role === 'assistant' ? 'Thinking…' : '') }}</p>
+
+        @if (message.sources.length) { <!-- Citation chips, decided by the backend code (not the LLM). -->
+          <div class="sources">
+            @for (source of message.sources; track source.number) {
+              <span class="chip">[{{ source.number }}] {{ source.fileName }} · p.{{ source.page }}
+                @if (source.score !== null) { · {{ source.score }} }
+              </span>
+            }
+          </div>
+        }
+      </article>
+    } @empty {
+      <p class="hint">Ask about your documents, e.g. “Which HR policies do we have?” or “How many leave days do I get?”</p>
+    }
+  </section>
+
+  <form class="composer" (submit)="$event.preventDefault(); send()">
+    <input
+      [value]="question()"
+      (input)="question.set($any($event.target).value)"
+      placeholder="Ask a question…"
+      [disabled]="busy()"
+    />
+    <button type="submit" [disabled]="busy() || !question().trim() || !connected()">Send</button>
+  </form>
+</main>
